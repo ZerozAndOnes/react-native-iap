@@ -27,6 +27,8 @@ import com.android.billingclient.api.BillingClient;
 import com.android.billingclient.api.BillingClientStateListener;
 import com.android.billingclient.api.BillingFlowParams;
 import com.android.billingclient.api.ConsumeResponseListener;
+import com.android.billingclient.api.PriceChangeConfirmationListener;
+import com.android.billingclient.api.PriceChangeFlowParams;
 import com.android.billingclient.api.Purchase;
 import com.android.billingclient.api.PurchaseHistoryResponseListener;
 import com.android.billingclient.api.PurchasesUpdatedListener;
@@ -594,6 +596,58 @@ public class RNIapModule extends ReactContextBaseJavaModule implements Purchases
   @ReactMethod
   public void startListening(final Promise promise) {
     sendUnconsumedPurchases(promise);
+  }
+
+  @ReactMethod
+  public void launchPriceChangeConfirmation(final String sku, final Promise promise) {
+    final Activity activity = getCurrentActivity();
+
+    if (activity == null) {
+      promise.reject(DoobooUtils.E_UNKNOWN, "getCurrentActivity returned null");
+      return;
+    }
+
+    ensureConnection(promise, new Runnable() {
+      @Override
+      public void run() {
+        SkuDetails selectedSku = null;
+        for (SkuDetails skuDetail : skus) {
+          if (skuDetail.getSku().equals(sku)) {
+            selectedSku = skuDetail;
+            break;
+          }
+        }
+        if (selectedSku == null) {
+          promise.reject("launchPriceChangeConfirmation", "The sku was not found. Please fetch products first by calling getSubscriptions");
+          return;
+        }
+        
+        PriceChangeFlowParams priceChangeFlowParams = PriceChangeFlowParams.newBuilder()
+          .setSkuDetails(selectedSku)
+          .build();
+
+        billingClient.launchPriceChangeConfirmationFlow(activity,
+          priceChangeFlowParams,
+          new PriceChangeConfirmationListener() {
+            @Override
+            public void onPriceChangeConfirmationResult(BillingResult billingResult) {
+              try {
+                int responseCode = billingResult.getResponseCode();
+                if (responseCode == BillingClient.BillingResponseCode.OK) {
+                  promise.resolve(true);
+                } else if (responseCode == BillingClient.BillingResponseCode.USER_CANCELED) {
+                  promise.resolve(false);
+                } else {
+                  DoobooUtils.getInstance().rejectPromiseWithBillingError(promise, responseCode);
+                }
+              } catch (Exception e) {
+                promise.reject("launchPriceChangeConfirmation", e.getMessage());
+                return;
+              }
+            }
+          });
+      }
+    });
   }
 
   private void sendEvent(ReactContext reactContext,

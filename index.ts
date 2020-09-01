@@ -536,6 +536,24 @@ export const consumePurchaseAndroid = (
   })();
 
 /**
+* Launch price change dialog (on Android.) No-op on iOS.
+*   True if user confirms the price change. False if user doesn't confirm.
+* https://developer.android.com/google/play/billing/subs#price-change-launch
+* @param {string} sku The product's sku
+* @returns {Promise<boolean>} 
+*/
+export const launchPriceChangeConfirmationAndroid = (
+  sku: string
+): Promise<boolean> =>
+  Platform.select({
+    ios: async () => Promise.resolve(),
+    android: async () => {
+      checkNativeAndroidAvailable();
+      return RNIapModule.launchPriceChangeConfirmation(sku);
+    },
+  })();
+
+/**
  * Should Add Store Payment (iOS only)
  *   Indicates the the App Store purchase should continue from the app instead of the App Store.
  * @returns {Promise<Product>}
@@ -733,6 +751,7 @@ const iapUtils = {
   clearTransactionIOS,
   acknowledgePurchaseAndroid,
   consumePurchaseAndroid,
+  launchPriceChangeConfirmationAndroid,
   validateReceiptIos,
   validateReceiptAndroid,
   requestPurchase,
