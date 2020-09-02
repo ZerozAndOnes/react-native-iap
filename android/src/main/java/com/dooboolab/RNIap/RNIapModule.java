@@ -598,6 +598,17 @@ public class RNIapModule extends ReactContextBaseJavaModule implements Purchases
     sendUnconsumedPurchases(promise);
   }
 
+  private SkuDetails getSelectedSkuOrNull(final String sku) {
+    SkuDetails selectedSku = null;
+    for (SkuDetails skuDetail : skus) {
+      if (skuDetail.getSku().equals(sku)) {
+        selectedSku = skuDetail;
+        break;
+      }
+    }
+    return selectedSku;
+  }
+
   @ReactMethod
   public void launchPriceChangeConfirmation(final String sku, final Promise promise) {
     final Activity activity = getCurrentActivity();
@@ -610,13 +621,7 @@ public class RNIapModule extends ReactContextBaseJavaModule implements Purchases
     ensureConnection(promise, new Runnable() {
       @Override
       public void run() {
-        SkuDetails selectedSku = null;
-        for (SkuDetails skuDetail : skus) {
-          if (skuDetail.getSku().equals(sku)) {
-            selectedSku = skuDetail;
-            break;
-          }
-        }
+        SkuDetails selectedSku = getSelectedSkuOrNull(sku);
         if (selectedSku == null) {
           promise.reject("launchPriceChangeConfirmation", "The sku was not found. Please fetch products first by calling getSubscriptions");
           return;
